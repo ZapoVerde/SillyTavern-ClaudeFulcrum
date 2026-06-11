@@ -1,0 +1,12 @@
+{
+    "display_name": "ClaudeFulcrum",
+    "loading_order": 70,
+    "requires": [],
+    "optional": [],
+    "js": "index.js",
+    "css": "style.css",
+    "author": "ZapoVerde",
+    "version": "0.1.0",
+    "homePage": "https://github.com/ZapoVerde/SillyTavern-ClaudeFulcrum",
+    "auto_update": false
+}

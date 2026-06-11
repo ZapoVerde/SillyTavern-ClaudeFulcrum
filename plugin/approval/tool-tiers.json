@@ -1,0 +1,6 @@
+{
+  "tier1": ["Read", "Glob", "Grep", "LS", "WebSearch", "WebFetch", "TodoRead"],
+  "tier2": ["Write", "Edit", "MultiEdit", "Bash", "TodoWrite", "NotebookRead", "NotebookEdit"],
+  "tier3": [],
+  "unknown_default": "tier2"
+}

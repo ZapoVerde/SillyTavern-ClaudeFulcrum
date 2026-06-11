@@ -1,0 +1,48 @@
+<div id="cfm-window" class="cfm-window cfm-hidden">
+    <div class="cfm-rh cfm-rh-n"></div><div class="cfm-rh cfm-rh-e"></div>
+    <div class="cfm-rh cfm-rh-s"></div><div class="cfm-rh cfm-rh-w"></div>
+    <div class="cfm-rh cfm-rh-ne"></div><div class="cfm-rh cfm-rh-se"></div>
+    <div class="cfm-rh cfm-rh-sw"></div><div class="cfm-rh cfm-rh-nw"></div>
+
+    <div class="cfm-header" id="cfm-drag-handle">
+        <div class="cfm-header-left">
+            <span class="cfm-logo">⚡</span>
+            <span class="cfm-title">ClaudeFulcrum</span>
+            <span class="cfm-status-dot" id="cfm-status-dot" title="CC status"></span>
+        </div>
+        <div class="cfm-header-right">
+            <button class="cfm-hbtn cfm-mode-btn" id="cfm-mode-btn" title="Toggle mode: CC / Direct">CC</button>
+            <button class="cfm-hbtn" id="cfm-min-btn" title="Minimize">─</button>
+            <button class="cfm-hbtn cfm-hbtn-close" id="cfm-close-btn" title="Hide">✕</button>
+        </div>
+    </div>
+
+    <div class="cfm-presets" id="cfm-presets">
+        <!-- populated by index.js from /api/plugins/claudefulcrum/presets -->
+    </div>
+
+    <div class="cfm-output" id="cfm-output">
+        <div class="cfm-output-empty" id="cfm-output-empty">
+            Select a preset or type a command below.
+        </div>
+    </div>
+
+    <div class="cfm-approval-bar" id="cfm-approval-bar" style="display:none">
+        <div class="cfm-approval-label" id="cfm-approval-label"></div>
+        <div class="cfm-approval-btns">
+            <button class="cfm-btn cfm-btn-approve" id="cfm-approve-btn">Allow</button>
+            <button class="cfm-btn cfm-btn-deny" id="cfm-deny-btn">Deny</button>
+        </div>
+    </div>
+
+    <div class="cfm-thinking-bar" id="cfm-thinking-bar" style="display:none">
+        <div class="cfm-dots"><span></span><span></span><span></span></div>
+        <span id="cfm-thinking-text">Running…</span>
+        <button class="cfm-stop-btn" id="cfm-stop-btn" title="Stop">■</button>
+    </div>
+
+    <div class="cfm-input-row">
+        <textarea id="cfm-input" class="cfm-input" placeholder="Type a command or select a preset above…" rows="1"></textarea>
+        <button class="cfm-send-btn" id="cfm-send-btn" title="Run (Enter)">▶</button>
+    </div>
+</div>

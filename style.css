@@ -1,0 +1,373 @@
+/* ClaudeFulcrum panel styles */
+
+:root {
+    --cfm-bg:         #1a1a2e;
+    --cfm-bg-surface: #16213e;
+    --cfm-bg-input:   #0f3460;
+    --cfm-border:     1px solid rgba(255,255,255,0.1);
+    --cfm-text:       #e0e0e0;
+    --cfm-text-muted: #888;
+    --cfm-accent:     #4f8ef7;
+    --cfm-accent-dim: rgba(79,142,247,0.15);
+    --cfm-green:      #4caf50;
+    --cfm-red:        #f44336;
+    --cfm-warn:       #ff9800;
+    --cfm-radius:     6px;
+    --cfm-font:       'Segoe UI', system-ui, sans-serif;
+    --cfm-mono:       'Cascadia Code', 'Fira Code', monospace;
+    --cfm-shadow:     0 8px 32px rgba(0,0,0,0.5);
+    --cfm-z:          9000;
+}
+
+/* ── Window — desktop floating ───────────────────────────────────────── */
+
+.cfm-window {
+    position:        fixed;
+    top:             80px;
+    right:           20px;
+    width:           480px;
+    height:          600px;
+    min-width:       320px;
+    min-height:      300px;
+    background:      var(--cfm-bg);
+    border:          var(--cfm-border);
+    border-radius:   var(--cfm-radius);
+    box-shadow:      var(--cfm-shadow);
+    display:         flex;
+    flex-direction:  column;
+    z-index:         var(--cfm-z);
+    font-family:     var(--cfm-font);
+    font-size:       13px;
+    color:           var(--cfm-text);
+    overflow:        hidden;
+    transition:      transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.cfm-window.cfm-hidden {
+    display: none;
+}
+
+/* ── Resize handles ──────────────────────────────────────────────────── */
+
+.cfm-rh { position: absolute; z-index: 1; }
+.cfm-rh-n  { top: 0;    left: 4px;  right: 4px;  height: 4px; cursor: n-resize; }
+.cfm-rh-s  { bottom: 0; left: 4px;  right: 4px;  height: 4px; cursor: s-resize; }
+.cfm-rh-e  { right: 0;  top: 4px;   bottom: 4px; width: 4px;  cursor: e-resize; }
+.cfm-rh-w  { left: 0;   top: 4px;   bottom: 4px; width: 4px;  cursor: w-resize; }
+.cfm-rh-ne { top: 0;    right: 0;   width: 8px;  height: 8px; cursor: ne-resize; }
+.cfm-rh-se { bottom: 0; right: 0;   width: 8px;  height: 8px; cursor: se-resize; }
+.cfm-rh-sw { bottom: 0; left: 0;    width: 8px;  height: 8px; cursor: sw-resize; }
+.cfm-rh-nw { top: 0;    left: 0;    width: 8px;  height: 8px; cursor: nw-resize; }
+
+/* ── Header ──────────────────────────────────────────────────────────── */
+
+.cfm-header {
+    display:         flex;
+    align-items:     center;
+    justify-content: space-between;
+    padding:         6px 10px;
+    background:      var(--cfm-bg-surface);
+    border-bottom:   var(--cfm-border);
+    cursor:          move;
+    user-select:     none;
+    flex-shrink:     0;
+}
+
+.cfm-header-left, .cfm-header-right {
+    display:     flex;
+    align-items: center;
+    gap:         6px;
+}
+
+.cfm-logo   { font-size: 16px; }
+.cfm-title  { font-weight: 600; font-size: 13px; letter-spacing: 0.3px; }
+
+.cfm-status-dot {
+    width:         8px;
+    height:        8px;
+    border-radius: 50%;
+    background:    var(--cfm-text-muted);
+    transition:    background 0.3s;
+}
+.cfm-status-dot.ready   { background: var(--cfm-green); }
+.cfm-status-dot.error   { background: var(--cfm-red); }
+.cfm-status-dot.running { background: var(--cfm-warn); }
+
+.cfm-hbtn {
+    background:    transparent;
+    border:        var(--cfm-border);
+    border-radius: 3px;
+    color:         var(--cfm-text-muted);
+    cursor:        pointer;
+    padding:       2px 7px;
+    font-size:     11px;
+    line-height:   1.4;
+    transition:    color 0.15s, background 0.15s;
+    touch-action:  manipulation;
+}
+.cfm-hbtn:hover      { color: var(--cfm-text); background: rgba(255,255,255,0.07); }
+.cfm-hbtn-close:hover { color: var(--cfm-red); }
+.cfm-mode-btn        { color: var(--cfm-accent); border-color: var(--cfm-accent); font-weight: 600; }
+.cfm-mode-btn.direct { color: var(--cfm-warn);  border-color: var(--cfm-warn); }
+
+/* ── Presets bar ─────────────────────────────────────────────────────── */
+
+.cfm-presets {
+    display:       flex;
+    flex-wrap:     wrap;
+    gap:           4px;
+    padding:       6px 10px;
+    border-bottom: var(--cfm-border);
+    flex-shrink:   0;
+}
+
+.cfm-preset-btn {
+    background:    var(--cfm-accent-dim);
+    border:        1px solid var(--cfm-accent);
+    border-radius: 3px;
+    color:         var(--cfm-accent);
+    cursor:        pointer;
+    font-size:     11px;
+    padding:       3px 8px;
+    transition:    background 0.15s;
+    touch-action:  manipulation;
+}
+.cfm-preset-btn:hover  { background: var(--cfm-accent); color: #fff; }
+.cfm-preset-btn:active { background: var(--cfm-accent); color: #fff; }
+
+/* ── Output ──────────────────────────────────────────────────────────── */
+
+.cfm-output {
+    flex:        1;
+    overflow-y:  auto;
+    padding:     10px 12px;
+    font-family: var(--cfm-mono);
+    font-size:   12px;
+    line-height: 1.6;
+    word-break:  break-word;
+    white-space: pre-wrap;
+    -webkit-overflow-scrolling: touch;
+}
+
+.cfm-output-empty {
+    color:      var(--cfm-text-muted);
+    font-family: var(--cfm-font);
+    font-style: italic;
+    text-align: center;
+    margin-top: 40px;
+}
+
+.cfm-msg        { margin-bottom: 2px; }
+.cfm-msg-warn   { color: var(--cfm-warn); }
+.cfm-msg-error  { color: var(--cfm-red); }
+.cfm-msg-tool   { color: var(--cfm-text-muted); font-style: italic; }
+.cfm-msg-done   { color: var(--cfm-green); border-top: var(--cfm-border); margin-top: 6px; padding-top: 4px; }
+
+/* ── Approval bar ────────────────────────────────────────────────────── */
+
+.cfm-approval-bar {
+    display:         flex;
+    align-items:     center;
+    justify-content: space-between;
+    gap:             8px;
+    padding:         6px 10px;
+    background:      rgba(255, 152, 0, 0.1);
+    border-top:      1px solid var(--cfm-warn);
+    border-bottom:   1px solid var(--cfm-warn);
+    flex-shrink:     0;
+    flex-wrap:       wrap;
+}
+
+.cfm-approval-label { font-size: 11px; color: var(--cfm-warn); flex: 1; min-width: 0; }
+.cfm-approval-btns  { display: flex; gap: 6px; }
+
+.cfm-btn {
+    border:        none;
+    border-radius: 3px;
+    cursor:        pointer;
+    font-size:     11px;
+    font-weight:   600;
+    padding:       4px 12px;
+    touch-action:  manipulation;
+}
+.cfm-btn-approve { background: var(--cfm-green); color: #fff; }
+.cfm-btn-deny    { background: var(--cfm-red);   color: #fff; }
+
+/* ── Thinking bar ────────────────────────────────────────────────────── */
+
+.cfm-thinking-bar {
+    display:     flex;
+    align-items: center;
+    gap:         8px;
+    padding:     5px 10px;
+    border-top:  var(--cfm-border);
+    flex-shrink: 0;
+    font-size:   11px;
+    color:       var(--cfm-text-muted);
+}
+
+.cfm-dots { display: flex; gap: 3px; }
+.cfm-dots span {
+    width: 5px; height: 5px;
+    border-radius: 50%;
+    background: var(--cfm-accent);
+    animation: cfm-pulse 1.2s infinite;
+}
+.cfm-dots span:nth-child(2) { animation-delay: 0.2s; }
+.cfm-dots span:nth-child(3) { animation-delay: 0.4s; }
+@keyframes cfm-pulse { 0%,80%,100% { opacity: 0.2; } 40% { opacity: 1; } }
+
+.cfm-stop-btn {
+    margin-left:   auto;
+    background:    transparent;
+    border:        1px solid var(--cfm-red);
+    border-radius: 3px;
+    color:         var(--cfm-red);
+    cursor:        pointer;
+    font-size:     10px;
+    padding:       2px 6px;
+    touch-action:  manipulation;
+}
+.cfm-stop-btn:hover { background: var(--cfm-red); color: #fff; }
+
+/* ── Input row ───────────────────────────────────────────────────────── */
+
+.cfm-input-row {
+    display:     flex;
+    gap:         6px;
+    padding:     8px 10px;
+    border-top:  var(--cfm-border);
+    flex-shrink: 0;
+    background:  var(--cfm-bg-surface);
+}
+
+.cfm-input {
+    flex:         1;
+    background:   var(--cfm-bg-input);
+    border:       var(--cfm-border);
+    border-radius: var(--cfm-radius);
+    color:        var(--cfm-text);
+    font-family:  var(--cfm-font);
+    font-size:    13px;
+    padding:      6px 10px;
+    resize:       none;
+    min-height:   34px;
+    max-height:   120px;
+    outline:      none;
+}
+.cfm-input:focus       { border-color: var(--cfm-accent); }
+.cfm-input::placeholder { color: var(--cfm-text-muted); }
+
+.cfm-send-btn {
+    align-self:    flex-end;
+    background:    var(--cfm-accent);
+    border:        none;
+    border-radius: var(--cfm-radius);
+    color:         #fff;
+    cursor:        pointer;
+    font-size:     14px;
+    height:        34px;
+    width:         38px;
+    flex-shrink:   0;
+    transition:    background 0.15s;
+    touch-action:  manipulation;
+}
+.cfm-send-btn:hover    { background: #3a7de0; }
+.cfm-send-btn:active   { background: #3a7de0; }
+.cfm-send-btn:disabled { background: var(--cfm-text-muted); cursor: default; }
+
+/* ── Mobile — full-screen overlay ────────────────────────────────────── */
+
+@media (max-width: 640px) {
+    .cfm-window {
+        top:           0 !important;
+        left:          0 !important;
+        right:         0 !important;
+        bottom:        0 !important;
+        width:         100vw !important;
+        height:        100vh !important;
+        min-width:     0;
+        min-height:    0;
+        border-radius: 0;
+        border:        none;
+        font-size:     14px;
+    }
+
+    .cfm-rh { display: none; }
+
+    .cfm-header {
+        cursor:  default;
+        padding: 10px 14px;
+        min-height: 48px;
+    }
+
+    .cfm-logo  { font-size: 20px; }
+    .cfm-title { font-size: 15px; }
+
+    .cfm-status-dot {
+        width:  10px;
+        height: 10px;
+    }
+
+    .cfm-hbtn {
+        padding:    6px 12px;
+        font-size:  13px;
+        min-height: 36px;
+        min-width:  36px;
+    }
+
+    .cfm-presets {
+        gap:     6px;
+        padding: 8px 12px;
+    }
+
+    .cfm-preset-btn {
+        font-size:  13px;
+        padding:    8px 14px;
+        min-height: 40px;
+    }
+
+    .cfm-output {
+        font-size: 13px;
+        padding:   12px 14px;
+    }
+
+    .cfm-approval-bar { padding: 8px 12px; gap: 10px; }
+    .cfm-approval-label { font-size: 13px; }
+    .cfm-btn {
+        font-size:  13px;
+        padding:    8px 18px;
+        min-height: 40px;
+    }
+
+    .cfm-thinking-bar { padding: 8px 12px; font-size: 13px; }
+
+    .cfm-stop-btn {
+        font-size:  12px;
+        padding:    6px 12px;
+        min-height: 36px;
+    }
+
+    .cfm-input-row { padding: 10px 12px; gap: 8px; }
+
+    .cfm-input {
+        font-size:  15px;
+        padding:    8px 12px;
+        min-height: 42px;
+    }
+
+    .cfm-send-btn {
+        width:      46px;
+        height:     42px;
+        font-size:  16px;
+    }
+}
+
+/* ── Tablet — taller default, edge-anchored ──────────────────────────── */
+
+@media (min-width: 641px) and (max-width: 1024px) {
+    .cfm-window {
+        width:  420px;
+        height: min(70vh, 580px);
+    }
+}

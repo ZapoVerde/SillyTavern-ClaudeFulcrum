@@ -1,0 +1,9 @@
+{
+  "name": "claudefulcrum-plugin",
+  "version": "0.1.0",
+  "type": "module",
+  "dependencies": {
+    "@anthropic-ai/claude-code": "latest",
+    "@anthropic-ai/sdk": "latest"
+  }
+}
