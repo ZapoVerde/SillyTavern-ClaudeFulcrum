@@ -326,14 +326,12 @@
 
     // ─── Output helpers ───────────────────────────────────────────────────────
 
-    let _textBuffer = '';
-    let _textNode   = null;
+    let _textNode = null;
 
     function _clearOutput() {
-        const out   = document.getElementById('cfm-output');
+        const out = document.getElementById('cfm-output');
         out.innerHTML = '<div class="cfm-output-empty" id="cfm-output-empty" style="display:none"></div>';
-        _textBuffer = '';
-        _textNode   = null;
+        _textNode = null;
     }
 
     function _appendText(text) {
@@ -472,6 +470,29 @@
 
         _initDrag();
         _initResize();
+        _initMobileViewport();
+    }
+
+    // ─── Mobile viewport — Android nav bar clearance ──────────────────────────
+    // env(safe-area-inset-bottom) requires viewport-fit=cover which ST doesn't
+    // set, so it's always 0. Use visualViewport to measure the gap between
+    // window.innerHeight and the actually-visible area instead.
+
+    function _initMobileViewport() {
+        if (!window.matchMedia('(max-width: 640px)').matches) return;
+        if (!window.visualViewport) return;
+
+        const win = document.getElementById('cfm-window');
+        if (!win) return;
+
+        const update = () => {
+            const safeBottom = Math.max(0, window.innerHeight - window.visualViewport.height - window.visualViewport.offsetTop);
+            win.style.setProperty('--cfm-safe-bottom', safeBottom + 'px');
+        };
+
+        window.visualViewport.addEventListener('resize', update);
+        window.visualViewport.addEventListener('scroll', update);
+        update();
     }
 
     // ─── Boot ─────────────────────────────────────────────────────────────────
