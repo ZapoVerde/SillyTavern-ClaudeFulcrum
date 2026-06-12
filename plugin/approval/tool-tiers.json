@@ -1,6 +1,20 @@
 {
-  "tier1": ["Read", "Glob", "Grep", "LS", "WebSearch", "WebFetch", "TodoRead"],
-  "tier2": ["Write", "Edit", "MultiEdit", "Bash", "TodoWrite", "NotebookRead", "NotebookEdit"],
+  "tier1": [
+    "Read", "Glob", "Grep", "LS", "WebSearch", "WebFetch", "TodoRead",
+    "mcp__sillytavern__list_characters",
+    "mcp__sillytavern__read_character",
+    "mcp__sillytavern__list_lorebooks",
+    "mcp__sillytavern__read_lorebook",
+    "mcp__sillytavern__read_settings"
+  ],
+  "tier2": [
+    "Write", "Edit", "MultiEdit", "Bash", "TodoWrite", "NotebookRead", "NotebookEdit",
+    "mcp__sillytavern__write_character",
+    "mcp__sillytavern__write_lorebook",
+    "mcp__sillytavern__add_lorebook_entry",
+    "mcp__sillytavern__update_lorebook_entry",
+    "mcp__sillytavern__patch_settings"
+  ],
   "tier3": [],
   "unknown_default": "tier2"
 }

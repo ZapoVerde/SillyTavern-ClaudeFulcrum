@@ -1,105 +1,78 @@
 /**
  * @file plugin/runners/cc.js
  * @stamp 2026-06-11T00:00:00.000Z
- * @architectural-role IO Wrapper — spawns the claude CLI and streams events
+ * @architectural-role IO Wrapper — streams CC tasks via cc-runner HTTP API
  * @description
- * Spawns `claude -p` with --output-format stream-json and yields parsed
- * stream-json events as an async generator. The CC binary is resolved
- * relative to __dirname so it works from the local npm install inside
- * the plugin directory. Operates from ST's app root (process.cwd()) so
- * CC can navigate the full installation tree.
+ * Calls the cc-runner sidecar to run `claude -p` and streams the ndjson
+ * response back as parsed event objects. Cancellation kills the remote
+ * process via POST /cancel/:taskId.
  *
  * @api-declaration
- * checkBinary()            — resolves true if the claude binary exists
- * run(opts)                — async generator; yields stream-json event objects
- *   opts.prompt            — assembled prompt string
- *   opts.allowedTools      — string[] of pre-authorized tool names
- *   opts.signal            — AbortSignal to cancel the task
- *
- * @contract
- *   assertions:
- *     purity:           IO Wrapper
- *     state_ownership:  [none]
- *     external_io:      [claude CLI subprocess, stdout/stderr]
+ * checkBinary()  — resolves true if cc-runner is reachable
+ * run(opts)      — async generator; yields stream-json event objects
  */
 
-import { spawn }         from 'node:child_process';
-import path              from 'node:path';
-import { access }        from 'node:fs/promises';
-import { fileURLToPath } from 'node:url';
-
-const __dirname  = path.dirname(fileURLToPath(import.meta.url));
-const CC_BINARY  = path.join(__dirname, '..', 'node_modules', '.bin', 'claude');
-
-// ─── Binary check ─────────────────────────────────────────────────────────────
+import crypto            from 'node:crypto';
+import { CC_RUNNER_URL } from '../cc-runner-url.js';
 
 export async function checkBinary() {
-    try { await access(CC_BINARY); return true; }
-    catch { return false; }
+    try {
+        const res = await fetch(`${CC_RUNNER_URL}/auth/status`, {
+            signal: AbortSignal.timeout(3000),
+        });
+        return res.ok;
+    } catch {
+        return false;
+    }
 }
 
-// ─── Runner ───────────────────────────────────────────────────────────────────
-
 export async function* run({ prompt, allowedTools = [], signal }) {
-    const args = ['-p', prompt, '--output-format', 'stream-json', '--verbose'];
-    if (allowedTools.length > 0) {
-        args.push('--allowedTools', allowedTools.join(','));
-    }
+    const taskId = crypto.randomUUID();
 
-    console.log('[CFM runner] cwd:', process.cwd(), '| binary:', CC_BINARY);
-    console.log('[CFM runner] args:', args.join(' '));
+    let res;
     try {
-        const { readdirSync } = await import('node:fs');
-        console.log('[CFM runner] cwd contents:', readdirSync(process.cwd()).join(', '));
-    } catch (e) {
-        console.log('[CFM runner] cwd read failed:', e.message);
+        res = await fetch(`${CC_RUNNER_URL}/run`, {
+            method:  'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body:    JSON.stringify({ taskId, prompt, allowedTools }),
+            signal,
+        });
+    } catch (err) {
+        yield { type: 'error', message: `cc-runner unreachable: ${err.message}` };
+        return;
     }
 
-    const proc = spawn(CC_BINARY, args, {
-        cwd:   process.cwd(),
-        env:   { ...process.env },
-        stdio: ['ignore', 'pipe', 'pipe'],
-    });
-
-    if (signal) {
-        signal.addEventListener('abort', () => {
-            try { proc.kill('SIGTERM'); } catch {}
-        }, { once: true });
+    if (!res.ok) {
+        yield { type: 'error', message: `cc-runner returned ${res.status}` };
+        return;
     }
 
-    let buffer   = '';
-    let exitCode = null;
-    let stderrBuf = '';
+    const reader  = res.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer    = '';
 
-    proc.on('exit', (code) => { exitCode = code; });
-    proc.stderr.on('data', (chunk) => { stderrBuf += chunk.toString(); });
-
-    for await (const chunk of proc.stdout) {
-        buffer += chunk.toString();
-        const lines = buffer.split('\n');
-        buffer = lines.pop() ?? '';
-        for (const line of lines) {
-            const trimmed = line.trim();
-            if (!trimmed) continue;
-            try {
-                yield JSON.parse(trimmed);
-            } catch {
-                // non-JSON diagnostic line — forward as a debug event
-                yield { type: 'debug', text: trimmed };
+    try {
+        while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            buffer += decoder.decode(value, { stream: true });
+            const lines = buffer.split('\n');
+            buffer = lines.pop() ?? '';
+            for (const line of lines) {
+                const trimmed = line.trim();
+                if (!trimmed) continue;
+                try { yield JSON.parse(trimmed); }
+                catch { yield { type: 'debug', text: trimmed }; }
             }
         }
-    }
-
-    if (buffer.trim()) {
-        try { yield JSON.parse(buffer.trim()); }
-        catch { yield { type: 'debug', text: buffer.trim() }; }
-    }
-
-    console.log('[CFM runner] exit code:', exitCode, '| stderr:', stderrBuf.trim().slice(0, 200));
-    if (exitCode !== 0 && exitCode !== null && !signal?.aborted) {
-        yield {
-            type:    'error',
-            message: `CC exited with code ${exitCode}${stderrBuf.trim() ? ': ' + stderrBuf.trim().slice(0, 200) : ''}`,
-        };
+        if (buffer.trim()) {
+            try { yield JSON.parse(buffer.trim()); }
+            catch { yield { type: 'debug', text: buffer.trim() }; }
+        }
+    } finally {
+        reader.releaseLock();
+        if (signal?.aborted) {
+            fetch(`${CC_RUNNER_URL}/cancel/${taskId}`, { method: 'POST' }).catch(() => {});
+        }
     }
 }

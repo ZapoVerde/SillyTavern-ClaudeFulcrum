@@ -172,6 +172,20 @@ When CC uses a tool with no tier assignment, it is never silently approved or si
 
 ---
 
+## 16. Installation Must Be Invisible
+
+A user should never need to touch a terminal to install or update ClaudeFulcrum.
+
+The plugin is distributed as a self-contained zip. Dropping it into the ST plugins directory and restarting ST is the entire install. The plugin detects missing dependencies on every startup and installs them automatically. There is no "step 3: run npm install." There is no support pack. There is no separate sandbox install.
+
+This principle applies to updates too. Version drift between the extension and plugin surfaces as a visible prompt in the panel with an "Update Plugin" button — not as a silent breakage requiring the user to diagnose what changed and manually re-run commands.
+
+The one unavoidable manual step is the initial plugin folder copy — the browser extension cannot write to the server filesystem. This step must be guided by the panel (exact path, OS-specific instructions) and must be the only manual step. Any additional friction beyond this is a failure of the installation design.
+
+For developers using a symlink, the self-installer behaves identically: it resolves the real path via `import.meta.url`, installs into the correct directory, and requires no special handling.
+
+---
+
 ## 15. Documentation is Part of the Feature
 
 A feature that exists but is not documented is half-shipped.

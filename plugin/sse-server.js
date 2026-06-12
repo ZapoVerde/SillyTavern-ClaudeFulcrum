@@ -49,6 +49,9 @@ import { assemble }    from './context-assembler.js';
 import { classifyTools, getUnclassified } from './approval/tier-gate.js';
 import { logInvocation } from './logger.js';
 import { checkBinary }   from './runners/cc.js';
+import { getSandboxStatus } from './sandbox-manager.js';
+import { checkAuthStatus, invalidateAuthCache } from './auth.js';
+import { startSetupToken, submitToken, cancelSetup, saveRawToken } from './auth-setup.js';
 
 // ─── Task registry ────────────────────────────────────────────────────────────
 
@@ -203,11 +206,78 @@ export function registerRoutes(router) {
         res.json(getPresets());
     });
 
-    // ── GET /status — auth + binary status ───────────────────────────────────
+    // ── GET /status — binary + auth status ───────────────────────────────────
     router.get('/status', async (_req, res) => {
-        const binaryOk = await checkBinary();
+        const [binaryOk, auth] = await Promise.all([checkBinary(), checkAuthStatus()]);
         const unclassified = getUnclassified();
-        res.json({ binaryOk, unclassified });
+        res.json({ binaryOk, unclassified, authenticated: auth.loggedIn, email: auth.email });
+    });
+
+    // ── GET /auth/status — authentication state only ─────────────────────────
+    router.get('/auth/status', async (_req, res) => {
+        const auth = await checkAuthStatus();
+        res.json({ authenticated: auth.loggedIn, email: auth.email });
+    });
+
+    // ── POST /auth/start-setup — spawn setup-token, return URL ───────────────
+    router.post('/auth/start-setup', async (_req, res) => {
+        try {
+            const { setupId, url } = await startSetupToken();
+            res.json({ setupId, url });
+        } catch (err) {
+            res.status(500).json({ error: err.message });
+        }
+    });
+
+    // ── POST /auth/complete-setup — submit token to subprocess ────────────────
+    router.post('/auth/complete-setup', async (req, res) => {
+        const { setupId, token } = req.body ?? {};
+        if (!setupId || !token) return res.status(400).json({ error: 'Missing setupId or token' });
+        try {
+            const data = await submitToken(setupId, token);
+            invalidateAuthCache();
+            res.json({ ok: true, email: data?.email ?? null });
+        } catch (err) {
+            res.status(500).json({ error: err.message });
+        }
+    });
+
+    // ── POST /auth/cancel-setup — abort in-progress setup ────────────────────
+    router.post('/auth/cancel-setup', (_req, res) => {
+        cancelSetup();
+        res.json({ ok: true });
+    });
+
+    // ── POST /auth/set-token — persist OAuth token directly ──────────────────
+    router.post('/auth/set-token', async (req, res) => {
+        const { token } = req.body ?? {};
+        if (!token) return res.status(400).json({ error: 'token required' });
+        try {
+            await saveRawToken(token);
+            invalidateAuthCache();
+            const auth = await checkAuthStatus();
+            res.json({ ok: true, authenticated: auth.loggedIn, email: auth.email });
+        } catch (err) {
+            res.status(500).json({ error: err.message });
+        }
+    });
+
+    // ── GET /debug/mount — diagnose host CC extension mount ──────────────────
+    router.get('/debug/mount', async (_req, res) => {
+        const { readdir } = await import('node:fs/promises');
+        const root = '/host-cc-extensions';
+        try {
+            const entries = await readdir(root);
+            const cc = entries.filter(e => e.startsWith('anthropic.claude-code'));
+            res.json({ root, readable: true, totalEntries: entries.length, ccDirs: cc });
+        } catch (err) {
+            res.json({ root, readable: false, error: err.message });
+        }
+    });
+
+    // ── GET /sandbox-status — sandbox connection + tool list ─────────────────
+    router.get('/sandbox-status', (_req, res) => {
+        res.json(getSandboxStatus());
     });
 }
 

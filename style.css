@@ -47,6 +47,8 @@
     display: none;
 }
 
+.cfm-hidden { display: none !important; }
+
 /* ── Resize handles ──────────────────────────────────────────────────── */
 
 .cfm-rh { position: absolute; z-index: 1; }
@@ -157,11 +159,12 @@
     margin-top: 40px;
 }
 
-.cfm-msg        { margin-bottom: 2px; }
-.cfm-msg-warn   { color: var(--cfm-warn); }
-.cfm-msg-error  { color: var(--cfm-red); }
-.cfm-msg-tool   { color: var(--cfm-text-muted); font-style: italic; }
-.cfm-msg-done   { color: var(--cfm-green); border-top: var(--cfm-border); margin-top: 6px; padding-top: 4px; }
+.cfm-msg          { margin-bottom: 2px; }
+.cfm-msg-warn     { color: var(--cfm-warn); }
+.cfm-msg-error    { color: var(--cfm-red); }
+.cfm-msg-tool     { color: var(--cfm-text-muted); font-style: italic; }
+.cfm-msg-done     { color: var(--cfm-green); border-top: var(--cfm-border); margin-top: 6px; padding-top: 4px; }
+.cfm-msg-prompt   { color: var(--cfm-accent); opacity: 0.7; margin-bottom: 6px; }
 
 /* ── Approval bar ────────────────────────────────────────────────────── */
 
@@ -276,6 +279,114 @@
 .cfm-send-btn:active   { background: #3a7de0; }
 .cfm-send-btn:disabled { background: var(--cfm-text-muted); cursor: default; }
 
+/* ── Auth overlay ────────────────────────────────────────────────────── */
+
+.cfm-auth-overlay {
+    position:        absolute;
+    inset:           0;
+    background:      var(--cfm-bg);
+    display:         flex;
+    align-items:     center;
+    justify-content: center;
+    z-index:         10;
+    padding:         16px;
+}
+
+.cfm-auth-overlay.cfm-hidden { display: none; }
+
+.cfm-auth-box {
+    width:      100%;
+    max-width:  380px;
+    display:    flex;
+    flex-direction: column;
+    gap:        10px;
+}
+
+.cfm-auth-header {
+    display:         flex;
+    align-items:     center;
+    justify-content: space-between;
+}
+
+.cfm-auth-title {
+    font-size:   15px;
+    font-weight: 600;
+    color:       var(--cfm-accent);
+}
+
+
+.cfm-auth-desc {
+    font-size:  12px;
+    color:      var(--cfm-text-muted);
+    margin:     0;
+    line-height: 1.5;
+}
+
+.cfm-auth-url {
+    display:       block;
+    background:    var(--cfm-bg-surface);
+    border:        var(--cfm-border);
+    border-radius: var(--cfm-radius);
+    color:         var(--cfm-accent);
+    font-family:   var(--cfm-mono);
+    font-size:     11px;
+    padding:       6px 10px;
+    word-break:    break-all;
+    text-decoration: none;
+}
+.cfm-auth-url:hover { text-decoration: underline; }
+
+.cfm-auth-token-input {
+    background:    var(--cfm-bg-input);
+    border:        var(--cfm-border);
+    border-radius: var(--cfm-radius);
+    color:         var(--cfm-text);
+    font-family:   var(--cfm-mono);
+    font-size:     12px;
+    outline:       none;
+    padding:       8px 10px;
+    width:         100%;
+    box-sizing:    border-box;
+}
+.cfm-auth-token-input:focus { border-color: var(--cfm-accent); }
+
+.cfm-auth-actions { display: flex; gap: 6px; justify-content: flex-end; }
+
+.cfm-auth-alt-link {
+    margin: 8px 0 0;
+    font-size: 11px;
+    color: var(--cfm-muted);
+    text-align: center;
+}
+.cfm-auth-alt-link a { color: var(--cfm-accent); text-decoration: none; }
+.cfm-auth-alt-link a:hover { text-decoration: underline; }
+
+.cfm-btn-connect {
+    background:    var(--cfm-accent);
+    color:         #fff;
+    padding:       6px 20px;
+    font-size:     12px;
+}
+.cfm-btn-connect:hover    { background: #3a7de0; }
+.cfm-btn-connect:disabled { background: var(--cfm-text-muted); cursor: default; }
+
+.cfm-btn-cancel {
+    background:    transparent;
+    border:        var(--cfm-border) !important;
+    color:         var(--cfm-text-muted);
+    padding:       6px 14px;
+    font-size:     12px;
+}
+.cfm-btn-cancel:hover { color: var(--cfm-text); background: rgba(255,255,255,0.07); }
+
+.cfm-auth-status {
+    font-size:  11px;
+    min-height: 16px;
+    text-align: center;
+}
+.cfm-auth-status.ok    { color: var(--cfm-green); }
+.cfm-auth-status.error { color: var(--cfm-red); }
+
 /* ── Mobile — full-screen overlay ────────────────────────────────────── */
 
 @media (max-width: 640px) {
@@ -377,4 +488,31 @@
         width:  420px;
         height: min(70vh, 580px);
     }
+}
+
+/* ── Terminal pane ───────────────────────────────────────────────────── */
+
+.cfm-terminal-pane {
+    flex:        1 1 200px;
+    min-height:  180px;
+    max-height:  50%;
+    overflow:    hidden;
+    background:  #0d0d0d;
+    border-top:  1px solid rgba(255,255,255,0.08);
+    display:     flex;
+    flex-direction: column;
+}
+
+.cfm-terminal-pane.cfm-hidden {
+    display: none;
+}
+
+#cfm-xterm-container {
+    flex:    1;
+    padding: 4px;
+    overflow: hidden;
+}
+
+#cfm-xterm-container .xterm {
+    height: 100%;
 }

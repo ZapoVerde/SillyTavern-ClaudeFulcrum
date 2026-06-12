@@ -11,19 +11,76 @@
             <span class="cfm-status-dot" id="cfm-status-dot" title="CC status"></span>
         </div>
         <div class="cfm-header-right">
+            <button class="cfm-hbtn" id="cfm-presets-btn" title="Presets">☰</button>
             <button class="cfm-hbtn cfm-mode-btn" id="cfm-mode-btn" title="Toggle mode: CC / Direct">CC</button>
-            <button class="cfm-hbtn" id="cfm-min-btn" title="Minimize">─</button>
+            <button class="cfm-hbtn" id="cfm-term-btn" title="Toggle terminal">⌨</button>
             <button class="cfm-hbtn cfm-hbtn-close" id="cfm-close-btn" title="Hide">✕</button>
         </div>
     </div>
 
-    <div class="cfm-presets" id="cfm-presets">
+    <div class="cfm-presets cfm-hidden" id="cfm-presets">
         <!-- populated by index.js from /api/plugins/claudefulcrum/presets -->
     </div>
 
     <div class="cfm-output" id="cfm-output">
         <div class="cfm-output-empty" id="cfm-output-empty">
             Select a preset or type a command below.
+        </div>
+    </div>
+
+    <div class="cfm-auth-overlay cfm-hidden" id="cfm-auth-overlay">
+        <div class="cfm-auth-box">
+            <div class="cfm-auth-header">
+                <div class="cfm-auth-title">Connect Claude Code</div>
+                <button class="cfm-hbtn cfm-hbtn-close" id="cfm-auth-close" title="Dismiss">✕</button>
+            </div>
+
+            <!-- Step 1: start -->
+            <div id="cfm-auth-step-start">
+                <p class="cfm-auth-desc">Authenticate with your Claude Pro subscription to get started.</p>
+                <div class="cfm-auth-actions">
+                    <button class="cfm-btn cfm-btn-connect" id="cfm-auth-begin" style="width:100%">Connect with Claude</button>
+                </div>
+                <p class="cfm-auth-alt-link">Already have a token? <a href="#" id="cfm-auth-paste-link">Paste it directly</a></p>
+            </div>
+
+            <!-- Step 2: URL shown, waiting for key -->
+            <div id="cfm-auth-step-url" class="cfm-hidden">
+                <p class="cfm-auth-desc">Open this link in your browser:</p>
+                <a class="cfm-auth-url" id="cfm-auth-url-link" href="#" target="_blank" rel="noopener"></a>
+                <p class="cfm-auth-desc">After authenticating, paste the key you receive here:</p>
+                <input
+                    id="cfm-auth-token-input"
+                    class="cfm-auth-token-input"
+                    type="text"
+                    placeholder="Paste key here…"
+                    autocomplete="off"
+                    spellcheck="false"
+                >
+                <div class="cfm-auth-actions">
+                    <button class="cfm-btn cfm-btn-cancel" id="cfm-auth-cancel">Cancel</button>
+                    <button class="cfm-btn cfm-btn-connect" id="cfm-auth-submit">Submit</button>
+                </div>
+            </div>
+
+            <!-- Step 3: paste OAuth token directly -->
+            <div id="cfm-auth-step-paste" class="cfm-hidden">
+                <p class="cfm-auth-desc">Run <code>claude setup-token</code> in the terminal tab, complete the flow, then paste the <code>CLAUDE_CODE_OAUTH_TOKEN</code> value here:</p>
+                <input
+                    id="cfm-auth-rawtoken-input"
+                    class="cfm-auth-token-input"
+                    type="text"
+                    placeholder="Paste CLAUDE_CODE_OAUTH_TOKEN value…"
+                    autocomplete="off"
+                    spellcheck="false"
+                >
+                <div class="cfm-auth-actions">
+                    <button class="cfm-btn cfm-btn-cancel" id="cfm-auth-paste-cancel">Cancel</button>
+                    <button class="cfm-btn cfm-btn-connect" id="cfm-auth-paste-submit">Save Token</button>
+                </div>
+            </div>
+
+            <div class="cfm-auth-status" id="cfm-auth-status"></div>
         </div>
     </div>
 
@@ -39,6 +96,10 @@
         <div class="cfm-dots"><span></span><span></span><span></span></div>
         <span id="cfm-thinking-text">Running…</span>
         <button class="cfm-stop-btn" id="cfm-stop-btn" title="Stop">■</button>
+    </div>
+
+    <div class="cfm-terminal-pane cfm-hidden" id="cfm-terminal-pane">
+        <div id="cfm-xterm-container"></div>
     </div>
 
     <div class="cfm-input-row">

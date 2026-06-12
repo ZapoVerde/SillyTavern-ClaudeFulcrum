@@ -1,7 +1,7 @@
 (function () {
     'use strict';
 
-    const CFM_BUILD = '20260611-1';
+    const CFM_BUILD = '20260612-2';
     console.log('[CFM] IIFE executing — build:', CFM_BUILD, '| readyState:', document.readyState, '| viewport:', window.innerWidth + 'x' + window.innerHeight);
 
     const PLUGIN_BASE    = '/api/plugins/claudefulcrum';
@@ -147,7 +147,10 @@
                 btn.className   = 'cfm-preset-btn';
                 btn.textContent = p.label;
                 btn.dataset.id  = p.id;
-                btn.addEventListener('click', () => _runPreset(p.id));
+                btn.addEventListener('click', () => {
+                    bar.classList.add('cfm-hidden');
+                    _runPreset(p.id);
+                });
                 bar.appendChild(btn);
             }
         } catch {}
@@ -160,16 +163,138 @@
         try {
             const res  = await fetch(`${PLUGIN_BASE}/status`);
             const data = await res.json();
-            if (data.binaryOk) {
-                dot.className = 'cfm-status-dot ready';
-                dot.title     = 'CC ready';
-            } else {
+            if (!data.authenticated) {
                 dot.className = 'cfm-status-dot error';
-                dot.title     = 'CC binary not found — run: cd plugin && npm install';
+                dot.title     = data.binaryOk
+                    ? 'Not authenticated — connect your Claude account'
+                    : 'CC binary not found — check volume mount';
+                _showAuthOverlay();
+                return;
             }
+            dot.className = 'cfm-status-dot ready';
+            dot.title     = data.email ? `CC ready (${data.email})` : 'CC ready';
+            _hideAuthOverlay();
         } catch {
             dot.className = 'cfm-status-dot error';
             dot.title     = 'Plugin not reachable';
+        }
+    }
+
+    // ─── Auth overlay ──────────────────────────────────────────────────────────
+
+    let _setupId = null;
+
+    function _showAuthOverlay() {
+        const overlay = document.getElementById('cfm-auth-overlay');
+        if (!overlay) return;
+        overlay.classList.remove('cfm-hidden');
+        _authReset();
+    }
+
+    function _hideAuthOverlay() {
+        document.getElementById('cfm-auth-overlay')?.classList.add('cfm-hidden');
+    }
+
+    function _authReset() {
+        _setupId = null;
+        document.getElementById('cfm-auth-step-start').classList.remove('cfm-hidden');
+        document.getElementById('cfm-auth-step-url').classList.add('cfm-hidden');
+        document.getElementById('cfm-auth-step-paste').classList.add('cfm-hidden');
+        document.getElementById('cfm-auth-token-input').value = '';
+        document.getElementById('cfm-auth-rawtoken-input').value = '';
+        _authStatus('', '');
+    }
+
+    function _authStatus(cls, text) {
+        const el = document.getElementById('cfm-auth-status');
+        el.className   = `cfm-auth-status${cls ? ' ' + cls : ''}`;
+        el.textContent = text;
+    }
+
+    async function _authBegin() {
+        const btn = document.getElementById('cfm-auth-begin');
+        btn.disabled = true;
+        _authStatus('', 'Starting…');
+        try {
+            const res  = await fetch(`${PLUGIN_BASE}/auth/start-setup`, {
+                method: 'POST', headers: _postHeaders(), body: '{}',
+            });
+            const data = await res.json();
+            if (!res.ok) { _authStatus('error', data.error ?? 'Failed to start.'); return; }
+
+            _setupId = data.setupId;
+            const link = document.getElementById('cfm-auth-url-link');
+            link.href        = data.url;
+            link.textContent = data.url;
+            document.getElementById('cfm-auth-step-start').classList.add('cfm-hidden');
+            document.getElementById('cfm-auth-step-url').classList.remove('cfm-hidden');
+            document.getElementById('cfm-auth-token-input').focus();
+            _authStatus('', '');
+        } catch (err) {
+            _authStatus('error', `Error: ${err.message}`);
+        } finally {
+            btn.disabled = false;
+        }
+    }
+
+    async function _authSubmit() {
+        const token = document.getElementById('cfm-auth-token-input').value.trim();
+        if (!token || !_setupId) return;
+        const btn = document.getElementById('cfm-auth-submit');
+        btn.disabled = true;
+        _authStatus('', 'Verifying…');
+        try {
+            const res  = await fetch(`${PLUGIN_BASE}/auth/complete-setup`, {
+                method:  'POST',
+                headers: _postHeaders(),
+                body:    JSON.stringify({ setupId: _setupId, token }),
+            });
+            const data = await res.json();
+            if (!res.ok) { _authStatus('error', data.error ?? 'Failed.'); return; }
+            _authStatus('ok', `Connected${data.email ? ' as ' + data.email : ''}.`);
+            setTimeout(async () => { await _checkStatus(); }, 800);
+        } catch (err) {
+            _authStatus('error', `Error: ${err.message}`);
+        } finally {
+            btn.disabled = false;
+        }
+    }
+
+    async function _authCancel() {
+        if (_setupId) {
+            await fetch(`${PLUGIN_BASE}/auth/cancel-setup`, {
+                method: 'POST', headers: _postHeaders(), body: '{}',
+            }).catch(() => {});
+        }
+        _authReset();
+    }
+
+    function _authShowPaste() {
+        document.getElementById('cfm-auth-step-start').classList.add('cfm-hidden');
+        document.getElementById('cfm-auth-step-paste').classList.remove('cfm-hidden');
+        document.getElementById('cfm-auth-rawtoken-input').focus();
+    }
+
+    async function _authPasteSubmit() {
+        const raw = document.getElementById('cfm-auth-rawtoken-input').value.trim();
+        if (!raw) return;
+        const btn = document.getElementById('cfm-auth-paste-submit');
+        btn.disabled = true;
+        _authStatus('', 'Saving…');
+        try {
+            const res  = await fetch(`${PLUGIN_BASE}/auth/set-token`, {
+                method:  'POST',
+                headers: _postHeaders(),
+                body:    JSON.stringify({ token: raw }),
+            });
+            const data = await res.json();
+            if (!res.ok) { _authStatus('error', data.error ?? 'Failed.'); return; }
+            _authStatus('ok', `Connected${data.email ? ' as ' + data.email : ''}.`);
+            setTimeout(async () => { await _checkStatus(); }, 800);
+        } catch (err) {
+            _authStatus('error', `Error: ${err.message}`);
+        } finally {
+            btn.disabled = false;
         }
     }
 
@@ -187,6 +312,7 @@
         if (!text || _activeTask) return;
         input.value = '';
         _clearOutput();
+        _appendMsg('prompt', text);
         await _startTask({ presetId: null, prompt: text, mode: _mode });
     }
 
@@ -277,8 +403,7 @@
 
         es.addEventListener('done', (e) => {
             const d = _safeParse(e.data);
-            const label = d.subtype === 'cancelled' ? 'Cancelled.' : d.subtype === 'error' ? 'Task failed.' : 'Done.';
-            _appendMsg('done', label);
+            if (d.subtype === 'cancelled') _appendMsg('done', 'Cancelled.');
             _setRunning(false);
             es.close();
             _activeTask = null;
@@ -297,14 +422,21 @@
 
     function _handleEvent(ev) {
         if (!ev) return;
-        if (ev.type === 'assistant' && ev.text) {
-            _appendText(ev.text);
-        } else if (ev.type === 'tool_use') {
-            _appendMsg('tool', `[tool: ${ev.name}]`);
+        if (ev.type === 'assistant') {
+            // CC stream-json: text lives in message.content[].text
+            for (const block of ev.message?.content ?? []) {
+                if (block.type === 'text' && block.text) _appendText(block.text);
+                if (block.type === 'tool_use') _appendMsg('tool', `⚙ ${block.name}`);
+            }
+        } else if (ev.type === 'result') {
+            // Final summary result — show if there's meaningful text
+            if (ev.result && typeof ev.result === 'string' && ev.result.trim()) {
+                _appendText(ev.result);
+            }
         } else if (ev.type === 'error') {
             _appendMsg('error', `✗ ${ev.message || JSON.stringify(ev)}`);
         } else if (ev.type === 'debug') {
-            // suppress debug lines
+            // suppress
         }
     }
 
@@ -431,6 +563,81 @@
         });
     }
 
+    // ─── Terminal ─────────────────────────────────────────────────────────────
+
+    let _term    = null;
+    let _termWs  = null;
+    let _fitAddon = null;
+
+    async function _loadXterm() {
+        if (window.Terminal) return;
+        const base = 'https://cdn.jsdelivr.net/npm';
+        const css = document.createElement('link');
+        css.rel = 'stylesheet';
+        css.href = `${base}/xterm@5/css/xterm.css`;
+        document.head.appendChild(css);
+        for (const src of [`${base}/xterm@5/lib/xterm.js`, `${base}/xterm-addon-fit@0.8/lib/xterm-addon-fit.js`]) {
+            await new Promise((res, rej) => {
+                const s = document.createElement('script'); s.src = src;
+                s.onload = res; s.onerror = rej; document.head.appendChild(s);
+            });
+        }
+    }
+
+    async function _termToggle() {
+        console.log('[CFM term] toggle clicked');
+        const pane = document.getElementById('cfm-terminal-pane');
+        if (!pane) { console.error('[CFM term] cfm-terminal-pane not found in DOM'); return; }
+
+        const open = pane.classList.toggle('cfm-hidden') === false;
+        console.log('[CFM term] pane open:', open, '| classList:', pane.className);
+        document.querySelector('.cfm-input-row')?.classList.toggle('cfm-hidden', open);
+        if (!open) { document.getElementById('cfm-input')?.focus(); return; }
+
+        if (_term) { _fitAddon?.fit(); _term.focus(); return; }
+
+        console.log('[CFM term] loading xterm.js...');
+        try {
+            await _loadXterm();
+        } catch (e) {
+            console.error('[CFM term] Failed to load xterm.js:', e);
+            return;
+        }
+        console.log('[CFM term] xterm.js loaded, Terminal:', typeof window.Terminal);
+
+        const container = document.getElementById('cfm-xterm-container');
+        console.log('[CFM term] container:', container, 'size:', container?.offsetWidth, 'x', container?.offsetHeight);
+        _term = new Terminal({ cursorBlink: true, fontSize: 13, theme: { background: '#0d0d0d' } });
+        _fitAddon = new FitAddon.FitAddon();
+        _term.loadAddon(_fitAddon);
+        _term.open(container);
+        _fitAddon.fit();
+
+        const wsUrl = `ws://${window.location.hostname}:3001`;
+        console.log('[CFM term] connecting WS:', wsUrl);
+        const ws = new WebSocket(wsUrl);
+        _termWs = ws;
+        ws.binaryType = 'arraybuffer';
+
+        ws.onopen  = () => { console.log('[CFM term] WS open'); _fitAddon.fit(); _term.focus(); };
+        ws.onmessage = (e) => _term.write(new Uint8Array(e.data));
+        ws.onclose = (e) => { console.warn('[CFM term] WS closed', e.code, e.reason); _term.write('\r\n\x1b[31m[terminal disconnected]\x1b[0m\r\n'); };
+        ws.onerror = (e) => { console.error('[CFM term] WS error', e); _term.write('\r\n\x1b[31m[connection error — is cc-runner port 3001 exposed?]\x1b[0m\r\n'); };
+
+        _term.onData((d) => { if (ws.readyState === WebSocket.OPEN) ws.send(d); });
+
+        const sendResize = () => {
+            _fitAddon.fit();
+            if (ws.readyState === WebSocket.OPEN) {
+                ws.send(JSON.stringify({ type: 'resize', cols: _term.cols, rows: _term.rows }));
+            }
+        };
+        window.addEventListener('resize', sendResize);
+        _term.onResize(({ cols, rows }) => {
+            if (ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ type: 'resize', cols, rows }));
+        });
+    }
+
     // ─── Event binding ────────────────────────────────────────────────────────
 
     function _bindEvents() {
@@ -438,10 +645,9 @@
         const win = document.getElementById('cfm-window');
         win.addEventListener('click', e => e.stopPropagation());
 
-        // Panel close/minimize — both just hide, wand menu reopens
+        // Panel close — wand reopens it
         const _hide = () => win.classList.add('cfm-hidden');
         document.getElementById('cfm-close-btn').addEventListener('click', _hide);
-        document.getElementById('cfm-min-btn').addEventListener('click', _hide);
 
         // Mode toggle
         document.getElementById('cfm-mode-btn').addEventListener('click', () => {
@@ -467,6 +673,31 @@
         // Approval
         document.getElementById('cfm-approve-btn').addEventListener('click', () => _approve(true));
         document.getElementById('cfm-deny-btn').addEventListener('click',    () => _approve(false));
+
+        // Presets toggle
+        document.getElementById('cfm-presets-btn').addEventListener('click', () => {
+            document.getElementById('cfm-presets').classList.toggle('cfm-hidden');
+        });
+
+        // Terminal toggle — stopPropagation on mousedown to prevent drag handle firing
+        const termBtn = document.getElementById('cfm-term-btn');
+        termBtn.addEventListener('mousedown', e => e.stopPropagation());
+        termBtn.addEventListener('click', _termToggle);
+
+        // Auth overlay
+        document.getElementById('cfm-auth-close').addEventListener('click', _hideAuthOverlay);
+        document.getElementById('cfm-auth-begin').addEventListener('click', _authBegin);
+        document.getElementById('cfm-auth-cancel').addEventListener('click', _authCancel);
+        document.getElementById('cfm-auth-submit').addEventListener('click', _authSubmit);
+        document.getElementById('cfm-auth-token-input').addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') _authSubmit();
+        });
+        document.getElementById('cfm-auth-paste-link').addEventListener('click', (e) => { e.preventDefault(); _authShowPaste(); });
+        document.getElementById('cfm-auth-paste-cancel').addEventListener('click', _authReset);
+        document.getElementById('cfm-auth-paste-submit').addEventListener('click', _authPasteSubmit);
+        document.getElementById('cfm-auth-rawtoken-input').addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') _authPasteSubmit();
+        });
 
         _initDrag();
         _initResize();

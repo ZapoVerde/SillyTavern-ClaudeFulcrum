@@ -4,6 +4,8 @@
   "type": "module",
   "dependencies": {
     "@anthropic-ai/claude-code": "latest",
-    "@anthropic-ai/sdk": "latest"
+    "@anthropic-ai/sdk": "latest",
+    "@modelcontextprotocol/sdk": "latest",
+    "cfm-sandbox": "file:../sandbox"
   }
 }

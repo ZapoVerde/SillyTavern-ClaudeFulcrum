@@ -20,9 +20,12 @@
  *     external_io:      [Express router registration]
  */
 
+import { ensureDeps }                from './installer.js';
 import { registerRoutes, cancelAll } from './sse-server.js';
 import { checkBinary }               from './runners/cc.js';
 import { resolveZones }              from './approval/tier-gate.js';
+import { initSandbox, shutdownSandbox, getSandboxStatus } from './sandbox-manager.js';
+import { startMcpServer, shutdownMcpServer }             from './mcp-server.js';
 
 export const info = {
     id:          'claudefulcrum',
@@ -33,14 +36,21 @@ export const info = {
 export async function init(router) {
     console.log('[CFM] Initializing...');
 
+    await ensureDeps();
     resolveZones();
 
     const binaryOk = await checkBinary();
     if (!binaryOk) {
-        console.warn('[CFM] claude binary not found — install via: cd plugin && npm install');
+        console.warn('[CFM] cc-runner not reachable — is the cc-runner container running?');
     } else {
-        console.log('[CFM] claude binary ready.');
+        console.log('[CFM] cc-runner reachable.');
     }
+
+    await initSandbox();
+    const sb = getSandboxStatus();
+    console.log(`[CFM] Sandbox: ${sb.connected ? `connected (${sb.mode}), ${sb.toolCount} tools` : 'not connected'}`);
+
+    await startMcpServer();
 
     registerRoutes(router);
     console.log('[CFM] Routes registered. Ready.');
@@ -48,5 +58,7 @@ export async function init(router) {
 
 export async function exit() {
     cancelAll();
+    await shutdownSandbox();
+    await shutdownMcpServer();
     console.log('[CFM] Exited.');
 }

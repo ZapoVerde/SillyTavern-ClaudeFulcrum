@@ -1,1 +1,4 @@
 plugin/node_modules/
+plugin/.claude/*
+!plugin/.claude/.gitignore
+sandbox/node_modules/

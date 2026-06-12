@@ -12,6 +12,7 @@ Two components, one repo:
 |---|---|---|
 | ST extension | `index.js` | Panel UI — displays output, captures input, communicates with plugin |
 | ST plugin | `plugin/` | Task runner — spawns CC, streams events, enforces zone and tier rules |
+| Sandbox | `sandbox/` | MCP tool server — provides shell, git, web, and filesystem tools to runners |
 
 ---
 
@@ -23,8 +24,10 @@ Two components, one repo:
 - **Tier approval flow** — read-only tools auto-approved; write tools surface a prompt before execution; destructive tools always prompt
 - **Zone enforcement** — ST code directories are permanently read-only regardless of approval; data directories are fully accessible
 - **Tool Tiering Manager** — tier assignments are user-owned config; unknown tools from CC updates surface for assignment rather than failing silently
-- **Two runners** — CC (full filesystem + tool use) and Direct (Anthropic SDK, conversational only)
+- **Two runners** — CC (full filesystem + tool use) and Direct (Anthropic API with sandbox tools)
+- **Sandbox tools** — Direct runner has access to `read_file`, `write_file`, `list_directory`, `search_files`, `run_bash`, `git_status`, `git_diff`, `git_log`, `git_commit`, `web_fetch`
 - **Session tracking** — reads `st_session.json` written by [Loggeryze](https://github.com/ZapoVerde/SillyTavern-Loggeryze); surfaces session ID and restart counter in task responses for debugging
+- **Self-installing** — plugin installs its own npm dependencies on first run; no manual npm step required
 
 ---
 
@@ -33,6 +36,7 @@ Two components, one repo:
 - SillyTavern with server plugins enabled (`enableServerPlugins: true` in config)
 - [SillyTavern-Loggeryze](https://github.com/ZapoVerde/SillyTavern-Loggeryze) server plugin (writes `st_session.json`)
 - Node.js (included in ST Docker image)
+- npm (included in ST Docker image and all standard Node installs)
 
 ---
 
@@ -40,29 +44,25 @@ Two components, one repo:
 
 ### 1. Extension
 
-Drop into ST's third-party extensions directory:
-
-```
-st-extensions/SillyTavern-ClaudeFulcrum/
-```
-
-Or install via ST's built-in extension manager.
+Install via ST's built-in extension manager, or drop the folder directly into ST's third-party extensions directory.
 
 ### 2. Plugin
 
-The companion server plugin lives in `plugin/`. Link it into ST's plugins directory:
+Download the latest `claudefulcrum-plugin.zip` from [GitHub releases](https://github.com/ZapoVerde/SillyTavern-ClaudeFulcrum/releases) and extract it into ST's plugins directory as `claudefulcrum/`:
 
-```bash
-ln -s ../../st-extensions/SillyTavern-ClaudeFulcrum/plugin st-plugins/claudefulcrum
+```
+ST plugins directory/
+└── claudefulcrum/        ← extracted plugin folder
+    ├── index.js
+    ├── package.json
+    └── ...
 ```
 
-Install plugin dependencies:
+**Windows (rawdog):** `%APPDATA%\SillyTavern\plugins\` or wherever your ST data lives.
+**Linux/Mac (rawdog):** `~/.config/SillyTavern/plugins/` or your ST data directory.
+**Docker:** see the Docker section below.
 
-```bash
-cd st-plugins/claudefulcrum && npm install
-```
-
-This installs the `claude` binary locally — no global install needed.
+Restart ST. On first startup the plugin installs its own npm dependencies automatically — this takes 30-60 seconds. Subsequent startups are instant.
 
 ### 3. Authentication
 
@@ -80,13 +80,25 @@ volumes:
 
 ---
 
+## Docker installation
+
+Add the plugin folder to your compose volume mounts. The plugin directory is included in the extension repo under `plugin/` — for Docker users, the recommended setup is a symlink so there is one copy of the code:
+
+```bash
+ln -s ../../st-extensions/SillyTavern-ClaudeFulcrum/plugin st-plugins/claudefulcrum
+```
+
+On first ST start the plugin self-installs into the mounted volume and persists across restarts.
+
+---
+
 ## Usage
 
 Open the panel via the **ClaudeFulcrum** entry in ST's Extensions menu (or the ⚡ wand button). The status dot shows whether the `claude` binary is ready.
 
 - **Preset buttons** — run a named task; tools and context are predefined
 - **Text input** — type a freeform command and press Enter or Send
-- **Mode toggle** — CC (full Claude Code) or Direct (Anthropic API, no filesystem)
+- **Mode toggle** — CC (full Claude Code) or Direct (Anthropic API with sandbox tools)
 - **Approval bar** — appears when a task needs write access; approve or deny inline
 - **Stop** — cancels the running task
 
@@ -104,28 +116,41 @@ SillyTavern-ClaudeFulcrum/
 ├── context/                    Context files injected by preset
 ├── plugin/                     ST server plugin
 │   ├── index.js                Plugin entry
+│   ├── installer.js            Self-installer — auto-runs npm install on first start
 │   ├── sse-server.js           Task registry + SSE routes
 │   ├── context-assembler.js    Workspace map + preset + prompt composition
 │   ├── runner-factory.js
+│   ├── sandbox-manager.js      MCP client + filesystem proxy tool routing
 │   ├── runners/
 │   │   ├── cc.js               CC runner (stream-json)
-│   │   └── direct.js           Direct Anthropic SDK runner
+│   │   └── direct.js           Direct Anthropic SDK runner with tool loop
+│   ├── tools/
+│   │   └── filesystem-proxy.js read_file, write_file, list_directory, search_files
 │   ├── approval/
 │   │   ├── tier-gate.js        Tool classification + approval bridge
 │   │   └── tool-tiers.json     User-owned tier assignments
 │   └── presets/
+├── sandbox/                    MCP tool server
+│   ├── server.js               Entry — stdio (rawdog) or HTTP+SSE (Docker)
+│   ├── registry.js             Registers tools with MCP server
+│   ├── tools/
+│   │   ├── shell.js            run_bash
+│   │   ├── git.js              git_status, git_diff, git_log, git_commit
+│   │   └── web.js              web_fetch
+│   └── transport/
+│       └── http.js             HTTP+SSE transport for Docker mode
 └── docs/
     ├── principles.md
     ├── architecture.md
     └── troubleshooting.md
 ```
 
-`st-plugins/claudefulcrum` is a symlink to `plugin/`. One copy, no sync step.
+`st-plugins/claudefulcrum` is a symlink to `plugin/` for dev installs. One copy, no sync step.
 
 ---
 
 ## Docs
 
-- [Architecture](docs/architecture.md) — component diagram, request flow, zone model, runner details
+- [Architecture](docs/architecture.md) — component diagram, sandbox model, request flow, zone model, runner details
 - [Principles](docs/principles.md) — design intent and constraints
 - [Troubleshooting](docs/troubleshooting.md) — startup verification, CSRF 403, SSE connection issues

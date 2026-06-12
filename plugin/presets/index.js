@@ -1,79 +1,87 @@
 /**
  * @file plugin/presets/index.js
- * @stamp 2026-06-11T00:00:00.000Z
+ * @stamp 2026-06-12T00:00:00.000Z
  * @architectural-role Pure — preset task definitions registry
  * @description
- * Defines the built-in preset tasks. Each preset declares its label,
- * the tools CC is permitted to use, any context files to inject, and
- * the prompt template. This is the primary mechanism for encoding domain
- * knowledge about ST operations into repeatable, trusted tasks.
+ * Loads preset definitions from *.md files in this directory. Each file uses
+ * YAML frontmatter for metadata (id, label, mode, order, tools, contextFiles)
+ * and a markdown body as the prompt template. Add a new .md file to add a
+ * new preset — no code changes required.
  *
  * @api-declaration
- * getPresets()          — returns all preset definitions
- * getPreset(id)         — returns a single preset by id, or undefined
- *
- * @contract
- *   assertions:
- *     purity:           Pure
- *     state_ownership:  [none]
- *     external_io:      [none]
+ * getPresets()  — returns all preset definitions sorted by order
+ * getPreset(id) — returns a single preset by id, or undefined
  */
 
-const PRESETS = [
-    {
-        id:           'hookseeker-audit',
-        label:        'Hookseeker Audit',
-        mode:         'cc',
-        tools:        ['Read', 'Glob', 'Grep', 'LS'],
-        contextFiles: ['cnz-layout.md'],
-        prompt:       `Perform a hookseeker audit of the Canonize extension.
-Check the following:
-1. Confirm the hookseeker output fields are present in recent chat messages
-2. Confirm anchor data is correctly embedded in the expected metadata fields
-3. Check for any missing or malformed chunk headers in lorebook entries
-4. Report any anomalies clearly with file paths and line references
+import { readFileSync, readdirSync } from 'node:fs';
+import { join, dirname }             from 'node:path';
+import { fileURLToPath }             from 'node:url';
 
-Use the workspace map and CNZ layout context to locate the relevant files.
-Be thorough but concise in your findings.`,
-    },
-    {
-        id:           'plugin-health',
-        label:        'Plugin Health Check',
-        mode:         'cc',
-        tools:        ['Read', 'Glob', 'LS'],
-        contextFiles: ['st-layout.md', 'plugins-layout.md'],
-        prompt:       `Perform a health check on the SillyTavern plugin installation.
-Check the following:
-1. Confirm all plugins in the plugins directory have valid index.js files
-2. Confirm plugin symlinks in st-plugins resolve correctly
-3. Check that each plugin exports the required info/init/exit interface
-4. Note any plugins that appear broken, missing dependencies, or misconfigured
+const __dirname = dirname(fileURLToPath(import.meta.url));
 
-Report findings with specific file paths.`,
-    },
-    {
-        id:           'extension-inventory',
-        label:        'Extension Inventory',
-        mode:         'cc',
-        tools:        ['Read', 'Glob', 'LS'],
-        contextFiles: ['extensions-layout.md'],
-        prompt:       `List all installed SillyTavern extensions and their status.
-For each extension:
-1. Name and version from manifest.json
-2. Whether it has a server-side plugin component
-3. Any obvious issues (missing files, broken manifest)
+function parseFrontmatter(content) {
+    const match = content.match(/^---\r?\n([\s\S]*?)\r?\n---(?:\r?\n|$)([\s\S]*)$/);
+    if (!match) return { meta: {}, body: content.trim() };
 
-Format as a clean inventory table.`,
-    },
-    {
-        id:           'freeform',
-        label:        'Freeform',
-        mode:         'cc',
-        tools:        ['Read', 'Glob', 'Grep', 'LS'],
-        contextFiles: ['st-layout.md'],
-        prompt:       '', // filled by user input
-    },
-];
+    const meta = {};
+    let currentKey = null;
+
+    for (const rawLine of match[1].split('\n')) {
+        const line = rawLine.replace(/\r$/, '');
+        if (/^  - /.test(line) && currentKey) {
+            if (!Array.isArray(meta[currentKey])) meta[currentKey] = [];
+            meta[currentKey].push(line.slice(4).trim());
+            continue;
+        }
+        const kv = line.match(/^([\w-]+):\s*(.*)$/);
+        if (kv) {
+            const [, key, val] = kv;
+            currentKey = key;
+            meta[key] = val.trim() !== '' ? val.trim() : [];
+        }
+    }
+
+    return { meta, body: match[2].trim() };
+}
+
+function toArray(v) {
+    if (Array.isArray(v)) return v;
+    if (v && v !== '') return [v];
+    return [];
+}
+
+function loadPresets() {
+    const files = readdirSync(__dirname)
+        .filter(f => f.endsWith('.md'))
+        .sort();
+
+    const presets = [];
+    for (const file of files) {
+        try {
+            const content = readFileSync(join(__dirname, file), 'utf8');
+            const { meta, body } = parseFrontmatter(content);
+            if (!meta.id || !meta.label) {
+                console.warn(`[CFM presets] skipping ${file} — missing id or label`);
+                continue;
+            }
+            presets.push({
+                id:           meta.id,
+                label:        meta.label,
+                mode:         meta.mode ?? 'cc',
+                order:        meta.order != null ? Number(meta.order) : 999,
+                tools:        toArray(meta.tools),
+                contextFiles: toArray(meta.contextFiles),
+                prompt:       body,
+            });
+        } catch (e) {
+            console.warn(`[CFM presets] failed to load ${file}:`, e.message);
+        }
+    }
+
+    return presets.sort((a, b) => a.order - b.order);
+}
+
+const PRESETS = loadPresets();
 
 export function getPresets() {
     return PRESETS;
